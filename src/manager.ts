@@ -269,49 +269,49 @@ function ManagerDialog(): React.ReactElement {
           { className: "orca-aio-batch-count" },
           `${selected.size} ${t("Selected")}`,
         ),
-        h(
-          "button",
-          {
-            type: "button",
-            className: "orca-aio-btn orca-aio-btn-danger",
-            disabled: selected.size === 0,
-            onClick: () =>
-              void doBatchDelete(selected, reload, () =>
+          h(
+            "button",
+            {
+              type: "button",
+              className: "orca-aio-btn orca-aio-btn-text orca-aio-btn-danger",
+              disabled: selected.size === 0,
+              onClick: () =>
+                void doBatchDelete(selected, reload, () =>
                 setFavoritesState(getFavorites()),
               ),
           },
           h("i", { className: "ti ti-trash" }),
           t("Delete"),
         ),
-        h(
-          "button",
-          {
-            type: "button",
-            className: "orca-aio-btn",
-            disabled: selected.size === 0,
-            onClick: () => void doBatchCopyIds(selected),
+          h(
+            "button",
+            {
+              type: "button",
+              className: "orca-aio-btn orca-aio-btn-text",
+              disabled: selected.size === 0,
+              onClick: () => void doBatchCopyIds(selected),
           },
           h("i", { className: "ti ti-copy" }),
           t("Copy block IDs"),
         ),
-        h(
-          "button",
-          {
-            type: "button",
-            className: "orca-aio-btn",
-            disabled: selected.size === 0,
-            onClick: () => doBatchFav(true),
+          h(
+            "button",
+            {
+              type: "button",
+              className: "orca-aio-btn orca-aio-btn-text",
+              disabled: selected.size === 0,
+              onClick: () => doBatchFav(true),
           },
           h("i", { className: "ti ti-star" }),
           t("Favorite"),
         ),
-        h(
-          "button",
-          {
-            type: "button",
-            className: "orca-aio-btn",
-            disabled: selected.size === 0,
-            onClick: () => doBatchFav(false),
+          h(
+            "button",
+            {
+              type: "button",
+              className: "orca-aio-btn orca-aio-btn-text",
+              disabled: selected.size === 0,
+              onClick: () => doBatchFav(false),
           },
           h("i", { className: "ti ti-star-off" }),
           t("Unfavorite"),
@@ -730,7 +730,13 @@ async function doDelete(
 ): Promise<void> {
   if (!window.confirm(t("Delete conversation?"))) return
   const done = await deleteChat(blockId)
-  if (done) await reload(true)
+  if (!done) {
+    orca.notify("warn", t("Favorited conversations cannot be deleted"), {
+      title: t("Delete"),
+    })
+    return
+  }
+  await reload(true)
 }
 
 async function doClean(
@@ -795,14 +801,21 @@ async function doBatchDelete(
     return
   }
   let ok = 0
+  let skipped = 0
   for (const id of ids) {
     if (await deleteChat(id)) ok++
+    else skipped++
   }
   orca.notify(
     "success",
     `${t("Deleted")} ${ok} / ${ids.length}`,
     { title: t("Batch operations") },
   )
+  if (skipped > 0) {
+    orca.notify("warn", `${t("Favorited conversations cannot be deleted")}：${skipped}`, {
+      title: t("Batch operations"),
+    })
+  }
   refreshFavs()
   await reload(true)
 }

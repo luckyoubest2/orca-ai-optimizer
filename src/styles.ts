@@ -73,16 +73,20 @@ const STYLES = `
   }
   .orca-aio-batch-bar {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    padding: 4px 6px;
-    border-radius: var(--orca-radius-sm);
-    background: var(--orca-color-gray-1);
+    padding: 6px 8px;
+    border-radius: var(--orca-radius-md);
+    border: 1px solid var(--orca-color-border);
+    background: var(--orca-color-bg-2);
+    color: var(--orca-color-text-1);
+    font-size: var(--orca-fontsize-sm);
   }
   .orca-aio-batch-count {
     color: var(--orca-color-text-2);
-    font-size: var(--orca-fontsize-xs);
+    font-size: var(--orca-fontsize-sm);
+    margin-right: auto;
   }
   .orca-aio-checkbox {
     width: 14px;
@@ -142,6 +146,9 @@ const STYLES = `
   .orca-aio-btn-text {
     font-size: var(--orca-fontsize-xs);
     gap: 4px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: var(--orca-radius-sm);
   }
   .orca-aio-btn:disabled {
     opacity: 0.4;

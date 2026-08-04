@@ -75,6 +75,7 @@ const zhCN: L10NMap = {
   "Favorited": "已收藏",
   "Not favorited": "未收藏",
   "All": "全部",
+  "Favorited conversations cannot be deleted": "收藏的对话不能删除",
 }
 
 const enUS: L10NMap = {
@@ -150,6 +151,7 @@ const enUS: L10NMap = {
   "Favorited": "Favorited",
   "Not favorited": "Not favorited",
   "All": "All",
+  "Favorited conversations cannot be deleted": "Favorited conversations cannot be deleted",
 }
 
 let table: L10NMap = enUS

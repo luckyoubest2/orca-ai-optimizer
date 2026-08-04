@@ -2,7 +2,7 @@ import type { Block, DbId } from "./orca.d.ts"
 import { KEY_AI_TAG } from "./constants"
 import { chatMsgCount, chatTitle, chatCtx, getRepr } from "./core"
 import { removeManyFromHistory } from "./history"
-import { removeManyFromFavorites } from "./favorites"
+import { isFavorite, removeManyFromFavorites } from "./favorites"
 
 /** 对话列表项（供侧边栏与历史浮层共用） */
 export interface ChatInfo {
@@ -174,6 +174,11 @@ export async function rootBlockTitleAsync(
  * 并同步清理历史注册表。
  */
 export async function deleteChat(blockId: DbId): Promise<boolean> {
+  // 收藏保护：收藏的对话不允许删除
+  if (isFavorite(blockId)) {
+    console.warn(`[orca-ai-optimizer] 对话 ${blockId} 已收藏，拒绝删除`)
+    return false
+  }
   try {
     await orca.commands.invokeEditorCommand(
       "core.editor.deleteBlocks",
@@ -264,6 +269,7 @@ export function isCleanupCandidate(
   if (isChatInNavigationHistory(info.blockId)) return false
   if (info.block.backRefs?.length > 0) return false
   if (info.block.children?.length > 0) return false
+  if (isFavorite(info.blockId)) return false
   if (opts.minAgeMs != null && Date.now() - info.created < opts.minAgeMs) {
     return false
   }
