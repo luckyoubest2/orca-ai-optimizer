@@ -1,4 +1,4 @@
-import type { Block, DbId } from "./orca.d.ts"
+import type { AIChatRepr, Block, ChatMessage, DbId } from "./orca.d.ts"
 import { KEY_AI_TAG } from "./constants"
 import { chatMsgCount, chatTitle, chatCtx, getRepr } from "./core"
 import { removeManyFromHistory } from "./history"
@@ -235,22 +235,35 @@ export async function renameChat(
   }
 }
 
-/** 导出对话为 Markdown 文本 */
+/**
+ * 导出对话为 Markdown 文本。
+ * 内置 markdown 转换器只导出块 content/子块，不读 _repr.msgs，
+ * 因此这里直接按消息数组拼装，确保复制/导出包含完整对话。
+ */
 export async function exportChatMarkdown(
   blockId: DbId,
 ): Promise<string | null> {
   try {
     const block = orca.state.blocks[blockId]
-    const repr = getRepr(block)
-    if (block == null || repr == null) return null
-    const text = await orca.converters.blockConvert(
-      "markdown",
-      block,
-      repr,
-      true,
-      { exportRootId: blockId },
-    )
-    return typeof text === "string" ? text : String(text ?? "")
+    const repr = getRepr(block) as AIChatRepr | undefined
+    if (block == null || repr?.type !== "aichat") return null
+    const msgs: ChatMessage[] = Array.isArray(repr.msgs) ? repr.msgs : []
+    const parts: string[] = []
+    for (const m of msgs) {
+      if (m == null || typeof m.content !== "string") continue
+      const content = m.content.trim()
+      if (!content) continue
+      if (m.role === "system") {
+        parts.push(`**System**\n\n${content}`)
+      } else if (m.role === "assistant") {
+        parts.push(`**Assistant**\n\n${content}`)
+      } else {
+        parts.push(`**User**\n\n${content}`)
+      }
+    }
+    if (parts.length === 0) return ""
+    const title = repr.cap ? `# ${repr.cap}\n\n` : ""
+    return title + parts.join("\n\n")
   } catch (err) {
     console.error("[orca-ai-optimizer] 导出对话失败", err)
     return null
