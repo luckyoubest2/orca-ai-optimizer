@@ -64,6 +64,17 @@ const zhCN: L10NMap = {
   "Created": "创建时间",
   "Message count": "消息数",
   "New AI conversation (replace current)": "新建 AI 对话（替换当前）",
+  "Batch operations": "批量操作",
+  "Batch": "批量",
+  "Select all": "全选",
+  "Selected": "已选",
+  "Conversations": "条对话",
+  "Copy block IDs": "复制块 ID",
+  "Favorite": "收藏",
+  "Unfavorite": "取消收藏",
+  "Favorited": "已收藏",
+  "Not favorited": "未收藏",
+  "All": "全部",
 }
 
 const enUS: L10NMap = {
@@ -128,6 +139,17 @@ const enUS: L10NMap = {
   "Created": "Created",
   "Message count": "Message count",
   "New AI conversation (replace current)": "New AI conversation (replace current)",
+  "Batch operations": "Batch operations",
+  "Batch": "Batch",
+  "Select all": "Select all",
+  "Selected": "selected",
+  "Conversations": "conversations",
+  "Copy block IDs": "Copy block IDs",
+  "Favorite": "Favorite",
+  "Unfavorite": "Unfavorite",
+  "Favorited": "Favorited",
+  "Not favorited": "Not favorited",
+  "All": "All",
 }
 
 let table: L10NMap = enUS

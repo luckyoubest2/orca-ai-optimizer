@@ -71,6 +71,28 @@ const STYLES = `
   .orca-aio-number {
     width: 56px;
   }
+  .orca-aio-batch-bar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 4px 6px;
+    border-radius: var(--orca-radius-sm);
+    background: var(--orca-color-gray-1);
+  }
+  .orca-aio-batch-count {
+    color: var(--orca-color-text-2);
+    font-size: var(--orca-fontsize-xs);
+  }
+  .orca-aio-checkbox {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    accent-color: var(--orca-color-primary-5);
+  }
+  .orca-aio-btn-fav {
+    color: var(--orca-color-text-yellow, #eab308);
+  }
   .orca-aio-search {
     flex: 1;
     min-width: 0;

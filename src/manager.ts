@@ -1,8 +1,5 @@
 import { t } from "./l10n"
-import {
-  openChat,
-  pluginSetting,
-} from "./core"
+import { openChat, pluginSetting } from "./core"
 import {
   cleanupEmptyChats,
   deleteChat,
@@ -13,6 +10,12 @@ import {
   rootBlockTitle,
   type ChatInfo,
 } from "./data"
+import {
+  getFavorites,
+  isFavorite,
+  setFavorites,
+  toggleFavorite,
+} from "./favorites"
 
 /** 类型化的 React（window.React 运行时是全局注入的 React 18） */
 const React = window.React as typeof import("react")
@@ -56,7 +59,6 @@ export function mountManager(): void {
     root = create(holder)
     root.render(React.createElement(ManagerDialog))
   } else {
-    // 应用初始化尚未完成时稍后重试
     setTimeout(() => {
       holder?.remove()
       holder = null
@@ -78,23 +80,29 @@ export function unmountManager(): void {
 function ManagerDialog(): React.ReactElement {
   const h = React.createElement
   const snap = Valtio.useSnapshot(store)
-  const open = !!snap.open
-  const visible = !!open
+  const visible = !!snap.open
   const [chats, setChats] = React.useState<ChatInfo[]>([])
   const [filter, setFilter] = React.useState("")
   const [sourceFilter, setSourceFilter] = React.useState<number | null>(
     snap.filterSource ?? null,
   )
   const [minUserMsgs, setMinUserMsgs] = React.useState(0)
-  const [msgCompare, setMsgCompare] = React.useState<"lte" | "gte">("lte")
+  const [msgCompare, setMsgCompare] = React.useState<"lte" | "gte">("gte")
+  const [favFilter, setFavFilter] = React.useState<"all" | "fav" | "unfav">(
+    "all",
+  )
   const [sortBy, setSortBy] = React.useState<"modified" | "created" | "user">(
     "modified",
   )
   const [busy, setBusy] = React.useState(false)
   const [renamingId, setRenamingId] = React.useState<number | null>(null)
+  const [favorites, setFavoritesState] = React.useState<Set<number>>(
+    getFavorites(),
+  )
+  const [batchMode, setBatchMode] = React.useState(false)
+  const [selected, setSelected] = React.useState<Set<number>>(new Set())
   const busyRef = React.useRef(false)
 
-  // 外部（时钟按钮等）传入来源筛选时同步到本地状态
   React.useEffect(() => {
     setSourceFilter(snap.filterSource ?? null)
   }, [snap.filterSource])
@@ -121,18 +129,26 @@ function ManagerDialog(): React.ReactElement {
 
   const onClose = React.useCallback(() => {
     store.open = false
+    setBatchMode(false)
+    setSelected(new Set())
   }, [])
 
   const query = filter.trim().toLowerCase()
   const sources = Array.from(
-    new Set(chats.map((c) => c.ctx?.[0]).filter((id): id is number => id != null)),
+    new Set(
+      chats.map((c) => c.ctx?.[0]).filter((id): id is number => id != null),
+    ),
   )
+
   let visibleChats = chats.filter((c) => {
     if (sourceFilter != null && Number(c.ctx?.[0]) !== Number(sourceFilter)) {
       return false
     }
     if (msgCompare === "gte" && c.userMsgCount < minUserMsgs) return false
     if (msgCompare === "lte" && c.userMsgCount > minUserMsgs) return false
+    const fav = favorites.has(c.blockId)
+    if (favFilter === "fav" && !fav) return false
+    if (favFilter === "unfav" && fav) return false
     if (!query) return true
     const rootTitle = rootBlockTitle(c.ctx?.[0]).toLowerCase()
     return (
@@ -146,6 +162,43 @@ function ManagerDialog(): React.ReactElement {
     if (sortBy === "user") return b.userMsgCount - a.userMsgCount
     return b.modified - a.modified
   })
+
+  const visibleIds = visibleChats.map((c) => c.blockId)
+  const allSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allSelected) {
+        for (const id of visibleIds) next.delete(id)
+      } else {
+        for (const id of visibleIds) next.add(id)
+      }
+      return next
+    })
+  }
+
+  const doBatchFav = (value: boolean) => {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    setFavorites(ids, value)
+    setFavoritesState(getFavorites())
+    orca.notify(
+      "success",
+      `${value ? t("Favorite") : t("Unfavorite")} ${ids.length} ${t("Conversations")}`,
+      { title: t("Batch operations") },
+    )
+  }
 
   const emptyCount = chats.filter((c) => c.isEmpty).length
 
@@ -172,6 +225,22 @@ function ManagerDialog(): React.ReactElement {
       "button",
       {
         type: "button",
+        className: batchMode
+          ? "orca-aio-btn orca-aio-btn-primary"
+          : "orca-aio-btn",
+        title: t("Batch operations"),
+        onClick: () => {
+          setBatchMode((v) => !v)
+          setSelected(new Set())
+        },
+      },
+      h("i", { className: "ti ti-list-check" }),
+      t("Batch"),
+    ),
+    h(
+      "button",
+      {
+        type: "button",
         className: "orca-aio-btn orca-aio-btn-primary",
         disabled: busy,
         onClick: () => void doClean(reload),
@@ -180,6 +249,75 @@ function ManagerDialog(): React.ReactElement {
       t("Clean empty chats"),
     ),
   )
+
+  const batchBar = batchMode
+    ? h(
+        "div",
+        { className: "orca-aio-batch-bar" },
+        h(
+          "label",
+          { className: "orca-aio-filter-label" },
+          h("input", {
+            type: "checkbox",
+            checked: allSelected,
+            onChange: toggleSelectAll,
+          }),
+          t("Select all"),
+        ),
+        h(
+          "span",
+          { className: "orca-aio-batch-count" },
+          `${selected.size} ${t("Selected")}`,
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            className: "orca-aio-btn orca-aio-btn-danger",
+            disabled: selected.size === 0,
+            onClick: () =>
+              void doBatchDelete(selected, reload, () =>
+                setFavoritesState(getFavorites()),
+              ),
+          },
+          h("i", { className: "ti ti-trash" }),
+          t("Delete"),
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            className: "orca-aio-btn",
+            disabled: selected.size === 0,
+            onClick: () => void doBatchCopyIds(selected),
+          },
+          h("i", { className: "ti ti-copy" }),
+          t("Copy block IDs"),
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            className: "orca-aio-btn",
+            disabled: selected.size === 0,
+            onClick: () => doBatchFav(true),
+          },
+          h("i", { className: "ti ti-star" }),
+          t("Favorite"),
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            className: "orca-aio-btn",
+            disabled: selected.size === 0,
+            onClick: () => doBatchFav(false),
+          },
+          h("i", { className: "ti ti-star-off" }),
+          t("Unfavorite"),
+        ),
+      )
+    : null
 
   const filters = h(
     "div",
@@ -235,6 +373,23 @@ function ManagerDialog(): React.ReactElement {
     h(
       "label",
       { className: "orca-aio-filter-label" },
+      t("Favorite"),
+      h(
+        "select",
+        {
+          className: "orca-aio-select",
+          value: favFilter,
+          onChange: (e: { target: { value: any } }) =>
+            setFavFilter(e.target.value),
+        },
+        h("option", { value: "all" }, t("All")),
+        h("option", { value: "fav" }, t("Favorited")),
+        h("option", { value: "unfav" }, t("Not favorited")),
+      ),
+    ),
+    h(
+      "label",
+      { className: "orca-aio-filter-label" },
       t("Sort"),
       h(
         "select",
@@ -268,12 +423,26 @@ function ManagerDialog(): React.ReactElement {
           { className: "orca-aio-empty" },
           busy
             ? t("Loading…")
-            : filter
+            : filter || favFilter !== "all" || sourceFilter != null
               ? t("No conversations match")
               : t("No conversations yet"),
         )
       : visibleChats.map((info) =>
-          buildRow(info, renamingId, setRenamingId, reload),
+          buildRow({
+            info,
+            renamingId,
+            setRenamingId,
+            reload,
+            favorites,
+            onToggleFav: (id) => {
+              const now = toggleFavorite(id)
+              setFavoritesState(getFavorites())
+              return now
+            },
+            batchMode,
+            selected: selected.has(info.blockId),
+            onSelect: () => toggleSelect(info.blockId),
+          }),
         ),
   )
 
@@ -303,6 +472,7 @@ function ManagerDialog(): React.ReactElement {
         ),
       ),
       toolbar,
+      batchBar,
       filters,
       summary,
       list,
@@ -310,13 +480,30 @@ function ManagerDialog(): React.ReactElement {
   )
 }
 
-function buildRow(
-  info: ChatInfo,
-  renamingId: number | null,
-  setRenamingId: (v: number | null) => void,
-  reload: (force?: boolean) => Promise<void>,
-): React.ReactElement {
+function buildRow(args: {
+  info: ChatInfo
+  renamingId: number | null
+  setRenamingId: (v: number | null) => void
+  reload: (force?: boolean) => Promise<void>
+  favorites: Set<number>
+  onToggleFav: (id: number) => boolean
+  batchMode: boolean
+  selected: boolean
+  onSelect: () => void
+}): React.ReactElement {
   const h = React.createElement
+  const {
+    info,
+    renamingId,
+    setRenamingId,
+    reload,
+    favorites,
+    onToggleFav,
+    batchMode,
+    selected,
+    onSelect,
+  } = args
+  const fav = favorites.has(info.blockId)
 
   const titleEl =
     renamingId === info.blockId
@@ -383,6 +570,19 @@ function buildRow(
             "button",
             {
               type: "button",
+              className: `orca-aio-btn${fav ? " orca-aio-btn-fav" : ""}`,
+              title: fav ? t("Unfavorite") : t("Favorite"),
+              onClick: (e: { stopPropagation?: () => void }) => {
+                e?.stopPropagation?.()
+                onToggleFav(info.blockId)
+              },
+            },
+            h("i", { className: fav ? "ti ti-star-filled" : "ti ti-star" }),
+          ),
+          h(
+            "button",
+            {
+              type: "button",
               className: "orca-aio-btn",
               title: t("Open"),
               onClick: (e: { stopPropagation?: () => void }) => {
@@ -441,9 +641,21 @@ function buildRow(
     ? h("span", { className: "orca-aio-badge-empty" }, t("Empty"))
     : null
 
+  const checkbox = batchMode
+    ? h("input", {
+        type: "checkbox",
+        className: "orca-aio-checkbox",
+        checked: selected,
+        onChange: () => onSelect(),
+        onClick: (e: { stopPropagation?: () => void }) =>
+          e?.stopPropagation?.(),
+      })
+    : null
+
   return h(
     "div",
     { className: "orca-aio-row" },
+    checkbox,
     badge,
     main,
     actions,
@@ -567,6 +779,47 @@ async function doCopy(info: ChatInfo): Promise<void> {
     console.error("[orca-ai-optimizer] 复制失败", err)
     orca.notify("error", t("Failed to export conversation"), {
       title: t("Copy"),
+    })
+  }
+}
+
+/** 批量删除 */
+async function doBatchDelete(
+  selected: Set<number>,
+  reload: (force?: boolean) => Promise<void>,
+  refreshFavs: () => void,
+): Promise<void> {
+  const ids = Array.from(selected)
+  if (ids.length === 0) return
+  if (!window.confirm(`${t("Delete")} ${ids.length} ${t("Conversations")}?`)) {
+    return
+  }
+  let ok = 0
+  for (const id of ids) {
+    if (await deleteChat(id)) ok++
+  }
+  orca.notify(
+    "success",
+    `${t("Deleted")} ${ok} / ${ids.length}`,
+    { title: t("Batch operations") },
+  )
+  refreshFavs()
+  await reload(true)
+}
+
+/** 批量复制块 ID（逗号分隔） */
+async function doBatchCopyIds(selected: Set<number>): Promise<void> {
+  const ids = Array.from(selected)
+  if (ids.length === 0) return
+  try {
+    await navigator.clipboard.writeText(ids.join(", "))
+    orca.notify("success", t("Copied to clipboard"), {
+      title: t("Copy block IDs"),
+    })
+  } catch (err) {
+    console.error("[orca-ai-optimizer] 复制块ID失败", err)
+    orca.notify("error", t("Failed to export conversation"), {
+      title: t("Copy block IDs"),
     })
   }
 }

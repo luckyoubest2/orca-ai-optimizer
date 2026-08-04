@@ -10,6 +10,7 @@ import {
 } from "./constants"
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
 import { loadHistory, registerOpenedChat } from "./history"
+import { loadFavorites } from "./favorites"
 import {
   newChatInCurrentPanel,
   registerSidetool,
@@ -126,6 +127,7 @@ export async function load(name: string): Promise<void> {
   }
 
   await loadHistory()
+  await loadFavorites()
   watchPanelNavigation()
 
   // 启动后稍等应用就绪再执行自动清理

@@ -2,6 +2,7 @@ import type { Block, DbId } from "./orca.d.ts"
 import { KEY_AI_TAG } from "./constants"
 import { chatMsgCount, chatTitle, chatCtx, getRepr } from "./core"
 import { removeManyFromHistory } from "./history"
+import { removeManyFromFavorites } from "./favorites"
 
 /** 对话列表项（供侧边栏与历史浮层共用） */
 export interface ChatInfo {
@@ -180,6 +181,7 @@ export async function deleteChat(blockId: DbId): Promise<boolean> {
       [blockId],
     )
     removeManyFromHistory([blockId])
+    removeManyFromFavorites([blockId])
     return true
   } catch (err) {
     console.error("[orca-ai-optimizer] 编辑器删除失败，改用后端删除", err)
@@ -191,6 +193,7 @@ export async function deleteChat(blockId: DbId): Promise<boolean> {
     ] = undefined
     orca.broadcasts.broadcast("orca.delete-blocks", [blockId])
     removeManyFromHistory([blockId])
+    removeManyFromFavorites([blockId])
     return true
   } catch (err2) {
     console.error("[orca-ai-optimizer] 删除对话失败", err2)
