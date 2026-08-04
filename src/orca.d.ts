@@ -473,8 +473,10 @@ export interface CursorNodeData {
 }
 
 export interface ChatMessage {
-  role: "system" | "user" | "assistant"
+  role: "system" | "user" | "assistant" | "tool"
   content: string
+  images?: any[]
+  tool_calls?: any[]
   [key: string]: any
 }
 

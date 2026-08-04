@@ -244,21 +244,36 @@ export async function exportChatMarkdown(
   blockId: DbId,
 ): Promise<string | null> {
   try {
-    const block = orca.state.blocks[blockId]
+    // 块可能未被加载（如刚从管理面板打开），先确保拿到完整块数据
+    let block = orca.state.blocks[blockId]
+    if (block == null) {
+      const fetched = await orca.invokeBackend("get-block", blockId)
+      if (fetched != null) {
+        orca.state.blocks[fetched.id] = fetched
+        block = fetched
+      }
+    }
     const repr = getRepr(block) as AIChatRepr | undefined
     if (block == null || repr?.type !== "aichat") return null
     const msgs: ChatMessage[] = Array.isArray(repr.msgs) ? repr.msgs : []
     const parts: string[] = []
     for (const m of msgs) {
-      if (m == null || typeof m.content !== "string") continue
-      const content = m.content.trim()
-      if (!content) continue
-      if (m.role === "system") {
-        parts.push(`**System**\n\n${content}`)
+      if (m == null) continue
+      // 跳过系统提示词与工具调用消息（与内置 buildAIChatTitleTranscript 一致）
+      if (m.role === "system" || m.role === "tool") continue
+      if (m.role === "user") {
+        const body = `${m.content ?? ""}`.trim()
+        const segs: string[] = []
+        if (body) segs.push(body)
+        const imageCount = Array.isArray(m.images) ? m.images.length : 0
+        if (imageCount > 0) {
+          segs.push(`${imageCount} attached image${imageCount > 1 ? "s" : ""}`)
+        }
+        const text = segs.join(" ").trim()
+        if (text) parts.push(`**User**\n\n${text}`)
       } else if (m.role === "assistant") {
-        parts.push(`**Assistant**\n\n${content}`)
-      } else {
-        parts.push(`**User**\n\n${content}`)
+        const content = `${m.content ?? ""}`.trim()
+        if (content) parts.push(`**Assistant**\n\n${content}`)
       }
     }
     if (parts.length === 0) return ""
