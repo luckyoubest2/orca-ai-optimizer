@@ -86,6 +86,7 @@ function ManagerDialog(): React.ReactElement {
     snap.filterSource ?? null,
   )
   const [minUserMsgs, setMinUserMsgs] = React.useState(0)
+  const [msgCompare, setMsgCompare] = React.useState<"lte" | "gte">("lte")
   const [sortBy, setSortBy] = React.useState<"modified" | "created" | "user">(
     "modified",
   )
@@ -130,7 +131,8 @@ function ManagerDialog(): React.ReactElement {
     if (sourceFilter != null && Number(c.ctx?.[0]) !== Number(sourceFilter)) {
       return false
     }
-    if (c.userMsgCount < minUserMsgs) return false
+    if (msgCompare === "gte" && c.userMsgCount < minUserMsgs) return false
+    if (msgCompare === "lte" && c.userMsgCount > minUserMsgs) return false
     if (!query) return true
     const rootTitle = rootBlockTitle(c.ctx?.[0]).toLowerCase()
     return (
@@ -209,7 +211,18 @@ function ManagerDialog(): React.ReactElement {
     h(
       "label",
       { className: "orca-aio-filter-label" },
-      `${t("Messages")} ≥`,
+      t("Messages"),
+      h(
+        "select",
+        {
+          className: "orca-aio-select",
+          value: msgCompare,
+          onChange: (e: { target: { value: any } }) =>
+            setMsgCompare(e.target.value),
+        },
+        h("option", { value: "lte" }, "≤"),
+        h("option", { value: "gte" }, "≥"),
+      ),
       h("input", {
         type: "number",
         min: 0,

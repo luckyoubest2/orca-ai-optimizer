@@ -68,7 +68,6 @@ function ChatSidetool(props: {
     current != null && Array.isArray(ctx) && ctx.length > 0
       ? Number(ctx[0])
       : rootBlockId
-  const isChatPanel = current != null
 
   const mainButton = h(
     Button,
@@ -78,13 +77,6 @@ function ChatSidetool(props: {
       title: t("Open last conversation"),
       onClick: (e: { shiftKey?: boolean }) => {
         void onMainClick(rootBlockId, panelId, !!e?.shiftKey)
-      },
-      onContextMenu: (e: { preventDefault?: () => void }) => {
-        e?.preventDefault?.()
-        // 右键快速新建：仅 AI 对话面板生效
-        if (isChatPanel) {
-          void onNewChatClick(rootBlockId, panelId, false)
-        }
       },
     },
     h("i", { className: "ti ti-message-chatbot" }),
@@ -114,7 +106,7 @@ function ChatSidetool(props: {
   const mainTooltip = h(
     Tooltip,
     {
-      text: `${t("Open last conversation")}\n${t("Right click")}: ${t("New conversation")}（${t("AI chat panel only")}）\nShift+${t("Open on the side")}`,
+      text: `${t("Open last conversation")}\nShift+${t("Open on the side")}`,
       placement: "horizontal",
     },
     mainButton,

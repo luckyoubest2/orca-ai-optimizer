@@ -63,6 +63,7 @@ const zhCN: L10NMap = {
   "Sort": "排序",
   "Created": "创建时间",
   "Message count": "消息数",
+  "New AI conversation (replace current)": "新建 AI 对话（替换当前）",
 }
 
 const enUS: L10NMap = {
@@ -126,6 +127,7 @@ const enUS: L10NMap = {
   "Sort": "Sort",
   "Created": "Created",
   "Message count": "Message count",
+  "New AI conversation (replace current)": "New AI conversation (replace current)",
 }
 
 let table: L10NMap = enUS
