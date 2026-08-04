@@ -1,5 +1,5 @@
 import { t } from "./l10n"
-import { openChat, pluginSetting } from "./core"
+import { copyTextToClipboard, openChat, pluginSetting } from "./core"
 import {
   cleanupEmptyChats,
   deleteChat,
@@ -803,7 +803,8 @@ async function doCopy(info: ChatInfo): Promise<void> {
     return
   }
   try {
-    await navigator.clipboard.writeText(text)
+    const ok = await copyTextToClipboard(text)
+    if (!ok) throw new Error("copy failed")
     orca.notify("success", t("Copied to clipboard"), {
       title: t("Copy"),
     })
@@ -851,7 +852,8 @@ async function doBatchCopyIds(selected: Set<number>): Promise<void> {
   const ids = Array.from(selected)
   if (ids.length === 0) return
   try {
-    await navigator.clipboard.writeText(ids.join(", "))
+    const ok = await copyTextToClipboard(ids.join(", "))
+    if (!ok) throw new Error("copy failed")
     orca.notify("success", t("Copied to clipboard"), {
       title: t("Copy block IDs"),
     })

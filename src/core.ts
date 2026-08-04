@@ -223,3 +223,37 @@ export function notifyAIUnconfigured(): void {
     },
   })
 }
+
+/**
+ * 复制文本到剪贴板：优先 Clipboard API，失败时回退 execCommand("copy")。
+ * Electron 渲染进程中 Clipboard API 可能因焦点/权限失败，兜底保证可用。
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch (err) {
+      console.warn("[orca-ai-optimizer] Clipboard API 失败，改用兜底", err)
+    }
+  }
+  try {
+    const ta = document.createElement("textarea")
+    ta.value = text
+    ta.setAttribute("readonly", "")
+    ta.style.position = "fixed"
+    ta.style.top = "0"
+    ta.style.left = "0"
+    ta.style.opacity = "0"
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    ta.setSelectionRange(0, text.length)
+    const ok = document.execCommand("copy")
+    ta.remove()
+    return ok
+  } catch (err) {
+    console.error("[orca-ai-optimizer] 复制失败", err)
+    return false
+  }
+}

@@ -1,7 +1,7 @@
 // 插件级常量：注册名、设置键、数据键
 
 export const PLUGIN_NAME = "orca-ai-optimizer"
-export const PLUGIN_VERSION = "1.0.0"
+export const PLUGIN_VERSION = "1.1.0"
 
 // AppKeys（对照安装版 v1.88.0 渲染包确认）
 // AIBaseURL=19, AIAPIKey=20, AITag=21, AIModel=22
