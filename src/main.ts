@@ -10,11 +10,20 @@ import {
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
 import { loadHistory, registerOpenedChat } from "./history"
 import { registerSidetool, unregisterSidetool } from "./sidetool"
-import { initSidebar, destroySidebar } from "./sidebar"
+import {
+  mountManager,
+  unmountManager,
+  toggleManager,
+} from "./manager"
+import {
+  registerHeadbarButton,
+  unregisterHeadbarButton,
+} from "./headbar"
 import { maybeAutoClean } from "./autoClean"
 import { injectStyles, removeStyles } from "./styles"
 
 let unsubscribeNav: (() => void) | null = null
+const CMD_OPEN_MANAGER = "orca-ai-optimizer.openChatManager"
 
 /** 订阅面板状态：任一面板打开 aichat 对话时登记到注册表 */
 function watchPanelNavigation(): void {
@@ -76,7 +85,7 @@ export async function load(name: string): Promise<void> {
     },
     [SETTING_CLEAN_CONFIRM]: {
       label: "手动清理前先确认",
-      description: "在“AI 对话”侧边栏点击清理时先弹出确认框。",
+      description: "在对话管理窗口点击清理时先弹出确认框。",
       type: "boolean",
       defaultValue: true,
     },
@@ -84,7 +93,14 @@ export async function load(name: string): Promise<void> {
 
   injectStyles()
   registerSidetool()
-  initSidebar()
+  mountManager()
+  registerHeadbarButton()
+
+  if (orca.state.commands[CMD_OPEN_MANAGER] == null) {
+    orca.commands.registerCommand(CMD_OPEN_MANAGER, () => {
+      toggleManager()
+    }, "AI 对话管理")
+  }
 
   await loadHistory()
   watchPanelNavigation()
@@ -103,7 +119,11 @@ export async function unload(): Promise<void> {
   unsubscribeNav?.()
   unsubscribeNav = null
   unregisterSidetool()
-  destroySidebar()
+  unregisterHeadbarButton()
+  unmountManager()
+  if (orca.state.commands[CMD_OPEN_MANAGER] != null) {
+    orca.commands.unregisterCommand(CMD_OPEN_MANAGER)
+  }
   removeStyles()
   console.log(`[orca-ai-optimizer] v${PLUGIN_VERSION} unloaded.`)
 }

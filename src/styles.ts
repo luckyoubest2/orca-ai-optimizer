@@ -3,38 +3,44 @@
 let styleEl: HTMLStyleElement | null = null
 
 const STYLES = `
-  /* 侧边栏标签项（原生 Segmented 样式） */
-  .orca-aio-tab-item {
-    cursor: pointer;
+  /* 对话管理弹窗 */
+  .orca-aio-manager-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-
-  /* 激活「AI 对话」标签时隐藏官方标签内容区 */
-  nav#sidebar.orca-aio-active .orca-sidebar-tabs {
-    display: none !important;
-  }
-
-  /* 侧边栏内容容器 */
-  .orca-aio-sidebar-content {
-    flex: 1;
-    min-height: 0;
+  .orca-aio-manager {
+    width: min(680px, calc(100vw - 48px));
+    max-height: min(560px, calc(100vh - 96px));
     display: flex;
     flex-direction: column;
-    gap: var(--orca-spacing-sm);
-    margin: 0;
-    padding: 0 var(--orca-spacing-md);
+    gap: 8px;
+    padding: 14px 16px 10px;
     box-sizing: border-box;
-    overflow-y: auto;
+    background: var(--orca-color-bg-1, var(--orca-color-canvas, #fff));
+    border: 1px solid var(--orca-color-border);
+    border-radius: var(--orca-radius-lg, 12px);
+    box-shadow: var(--orca-shadow-popup, 0 12px 32px rgba(0,0,0,0.25));
     font-family: var(--orca-fontfamily-ui);
     font-size: var(--orca-fontsize-sm);
     color: var(--orca-color-text-1);
     user-select: none;
   }
+  .orca-aio-manager-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .orca-aio-manager-title {
+    flex: 1;
+    font-size: var(--orca-fontsize-md);
+    font-weight: 600;
+  }
 
-  .orca-aio-toolbar {
+  .orca-aio-manager-toolbar {
     display: flex;
     gap: 6px;
     align-items: center;
-    padding: 4px 0 0;
   }
   .orca-aio-search {
     flex: 1;

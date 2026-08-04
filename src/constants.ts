@@ -22,9 +22,6 @@ export const SETTING_CLEAN_CONFIRM = "confirmBeforeClean"
 export const DATA_KEY_HISTORY = "panelChatHistory"
 export const DATA_KEY_LAST_CLEAN = "lastAutoCleanAt"
 
-// 侧边栏标签键
-export const SIDEBAR_TAB_KEY = "aiChatManager"
-
 // 侧工具条注册 ID（F0/F1 新对话 + 历史）
 export const SIDETOOL_ID = "orcaAiOptimizer.newChat"
 

@@ -50,6 +50,8 @@ const zhCN: L10NMap = {
   "Shift": "Shift",
   "Chevron": "▾",
   "History and new chat": "历史与新建",
+  "Close": "关闭",
+  "Empty": "空",
 }
 
 const enUS: L10NMap = {
@@ -100,6 +102,8 @@ const enUS: L10NMap = {
   "Shift": "Shift",
   "Chevron": "▾",
   "History and new chat": "history & new chat",
+  "Close": "Close",
+  "Empty": "Empty",
 }
 
 let table: L10NMap = enUS
