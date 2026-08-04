@@ -76,6 +76,7 @@ const zhCN: L10NMap = {
   "Not favorited": "未收藏",
   "All": "全部",
   "Favorited conversations cannot be deleted": "收藏的对话不能删除",
+  "Open last conversation on the side by default": "打开上次对话默认在侧边栏打开",
 }
 
 const enUS: L10NMap = {
@@ -152,6 +153,7 @@ const enUS: L10NMap = {
   "Not favorited": "Not favorited",
   "All": "All",
   "Favorited conversations cannot be deleted": "Favorited conversations cannot be deleted",
+  "Open last conversation on the side by default": "Open last conversation on the side by default",
 }
 
 let table: L10NMap = enUS

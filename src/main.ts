@@ -6,6 +6,7 @@ import {
   SETTING_CLEAN_AGE_HOURS,
   SETTING_CLEAN_CONFIRM,
   SETTING_CONFIRM,
+  SETTING_OPEN_LAST_ON_SIDE,
   SETTING_SHOW_HEADBAR_BUTTON,
 } from "./constants"
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
@@ -13,6 +14,7 @@ import { loadHistory, registerOpenedChat } from "./history"
 import { loadFavorites } from "./favorites"
 import {
   newChatInCurrentPanel,
+  openLastInCurrentPanel,
   registerSidetool,
   unregisterSidetool,
 } from "./sidetool"
@@ -32,6 +34,7 @@ let unsubscribeNav: (() => void) | null = null
 let unsubscribeSettings: (() => void) | null = null
 const CMD_OPEN_MANAGER = "orca-ai-optimizer.openChatManager"
 const CMD_NEW_CHAT = "orca-ai-optimizer.newChat"
+const CMD_OPEN_LAST = "orca-ai-optimizer.openLastChat"
 
 /** 订阅面板状态：任一面板打开 aichat 对话时登记到注册表 */
 function watchPanelNavigation(): void {
@@ -84,6 +87,13 @@ export async function load(name: string): Promise<void> {
       type: "boolean",
       defaultValue: true,
     },
+    [SETTING_OPEN_LAST_ON_SIDE]: {
+      label: "打开上次对话默认在侧边栏打开",
+      description:
+        "开启后，侧工具条主按钮与「打开上个 AI 对话」命令默认在侧边新面板打开上次对话；关闭则替换当前面板。Shift 点击始终在侧边打开。",
+      type: "boolean",
+      defaultValue: true,
+    },
     [SETTING_AUTO_CLEAN]: {
       label: "自动清理空对话",
       description:
@@ -125,6 +135,11 @@ export async function load(name: string): Promise<void> {
       void newChatInCurrentPanel(undefined, false)
     }, "新建 AI 对话（替换当前）")
   }
+  if (orca.state.commands[CMD_OPEN_LAST] == null) {
+    orca.commands.registerCommand(CMD_OPEN_LAST, () => {
+      void openLastInCurrentPanel()
+    }, "打开上个 AI 对话")
+  }
 
   await loadHistory()
   await loadFavorites()
@@ -153,6 +168,9 @@ export async function unload(): Promise<void> {
   }
   if (orca.state.commands[CMD_NEW_CHAT] != null) {
     orca.commands.unregisterCommand(CMD_NEW_CHAT)
+  }
+  if (orca.state.commands[CMD_OPEN_LAST] != null) {
+    orca.commands.unregisterCommand(CMD_OPEN_LAST)
   }
   removeStyles()
   console.log(`[orca-ai-optimizer] v${PLUGIN_VERSION} unloaded.`)

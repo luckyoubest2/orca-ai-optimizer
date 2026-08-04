@@ -1,5 +1,5 @@
 import { t } from "./l10n"
-import { SIDETOOL_ID } from "./constants"
+import { SETTING_OPEN_LAST_ON_SIDE, SIDETOOL_ID } from "./constants"
 import {
   aiConfigured,
   chatHasUserMessages,
@@ -135,6 +135,10 @@ async function onMainClick(
   const panel = resolvePanel(panelId)
   if (panel == null) return
 
+  // 默认侧边打开：Shift 或设置项开启
+  const finalSide =
+    openOnSide || pluginSetting(SETTING_OPEN_LAST_ON_SIDE) === true
+
   const current = getAIChatBlock(rootBlockId)
   const ctx = current != null ? getRepr(current)?.ctx : undefined
   const historyKey =
@@ -146,10 +150,23 @@ async function onMainClick(
   const liveEntry = await findLiveHistoryEntry(history)
   if (liveEntry != null) {
     registerOpenedChat(historyKey, liveEntry.blockId, liveEntry.title)
-    openChat(liveEntry.blockId, panel.id, openOnSide)
+    openChat(liveEntry.blockId, panel.id, finalSide)
     return
   }
-  await onNewChatClick(rootBlockId, panelId, openOnSide)
+  await onNewChatClick(rootBlockId, panelId, finalSide)
+}
+
+/** 系统命令：打开当前面板（来源文档）上次唤起的 AI 对话 */
+export async function openLastInCurrentPanel(): Promise<void> {
+  const panel = resolvePanel(undefined)
+  if (panel == null) return
+  const rootBlockId = Number(panel.viewArgs?.blockId)
+  if (!Number.isFinite(rootBlockId)) return
+  await onMainClick(
+    rootBlockId,
+    panel.id,
+    pluginSetting(SETTING_OPEN_LAST_ON_SIDE) === true,
+  )
 }
 
 /** 从历史中找第一条仍存在且有内容的对话 */
