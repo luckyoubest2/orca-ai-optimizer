@@ -91,8 +91,7 @@ function ManagerDialog(): React.ReactElement {
   const [favFilter, setFavFilter] = React.useState<"all" | "fav" | "unfav">(
     "all",
   )
-  const [activeFrom, setActiveFrom] = React.useState("")
-  const [activeTo, setActiveTo] = React.useState("")
+  const [inactiveDays, setInactiveDays] = React.useState(0)
   const [sortBy, setSortBy] = React.useState<"modified" | "created" | "user">(
     "modified",
   )
@@ -151,13 +150,9 @@ function ManagerDialog(): React.ReactElement {
     const fav = favorites.has(c.blockId)
     if (favFilter === "fav" && !fav) return false
     if (favFilter === "unfav" && fav) return false
-    if (activeFrom) {
-      const from = new Date(`${activeFrom}T00:00:00`).getTime()
-      if (Number.isFinite(from) && c.modified < from) return false
-    }
-    if (activeTo) {
-      const to = new Date(`${activeTo}T23:59:59.999`).getTime()
-      if (Number.isFinite(to) && c.modified > to) return false
+    if (inactiveDays > 0) {
+      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000
+      if (c.modified >= cutoff) return false
     }
     if (!query) return true
     const rootTitle = rootBlockTitle(c.ctx?.[0]).toLowerCase()
@@ -401,21 +396,23 @@ function ManagerDialog(): React.ReactElement {
       "label",
       { className: "orca-aio-filter-label" },
       t("Last active"),
-      h("input", {
-        type: "date",
-        className: "orca-aio-select orca-aio-date",
-        value: activeFrom,
-        onChange: (e: { target: { value: string } }) =>
-          setActiveFrom(e.target.value),
-      }),
-      "–",
-      h("input", {
-        type: "date",
-        className: "orca-aio-select orca-aio-date",
-        value: activeTo,
-        onChange: (e: { target: { value: string } }) =>
-          setActiveTo(e.target.value),
-      }),
+      h(
+        "select",
+        {
+          className: "orca-aio-select",
+          value: inactiveDays,
+          onChange: (e: { target: { value: any } }) =>
+            setInactiveDays(Number(e.target.value) || 0),
+        },
+        h("option", { value: 0 }, t("Not limited")),
+        [1, 3, 7, 14, 30, 60, 90, 180, 365].map((n) =>
+          h(
+            "option",
+            { key: n, value: n },
+            `${t("Over")} ${n} ${t("days")}`,
+          ),
+        ),
+      ),
     ),
     h(
       "label",
@@ -456,8 +453,7 @@ function ManagerDialog(): React.ReactElement {
             : filter ||
                 favFilter !== "all" ||
                 sourceFilter != null ||
-                !!activeFrom ||
-                !!activeTo
+                inactiveDays > 0
               ? t("No conversations match")
               : t("No conversations yet"),
         )
