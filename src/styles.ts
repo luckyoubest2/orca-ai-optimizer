@@ -108,6 +108,9 @@ const STYLES = `
     flex-direction: column;
     gap: 2px;
     padding-bottom: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   .orca-aio-row {
     display: flex;

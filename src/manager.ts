@@ -250,12 +250,17 @@ function buildRow(
     "div",
     {
       className: "orca-aio-row-main",
-      title: t("Open"),
-      onClick: () => {
+      title: t("Preview"),
+      onClick: (e: { currentTarget?: HTMLElement }) => {
         try {
-          openChat(info.blockId)
+          orca.utils.showBlockPreview(
+            info.blockId,
+            e.currentTarget,
+            void 0,
+            true,
+          )
         } catch (err) {
-          console.error("[orca-ai-optimizer] 打开对话失败", err)
+          console.error("[orca-ai-optimizer] 预览对话失败", err)
         }
       },
     },
@@ -269,6 +274,23 @@ function buildRow(
       : h(
           "div",
           { className: "orca-aio-row-actions" },
+          h(
+            "button",
+            {
+              type: "button",
+              className: "orca-aio-btn",
+              title: t("Open"),
+              onClick: (e: { stopPropagation?: () => void }) => {
+                e?.stopPropagation?.()
+                try {
+                  openChat(info.blockId)
+                } catch (err) {
+                  console.error("[orca-ai-optimizer] 打开对话失败", err)
+                }
+              },
+            },
+            h("i", { className: "ti ti-external-link" }),
+          ),
           h(
             "button",
             {

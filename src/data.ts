@@ -240,6 +240,7 @@ export async function exportChatMarkdown(
       block,
       repr,
       true,
+      { exportRootId: blockId },
     )
     return typeof text === "string" ? text : String(text ?? "")
   } catch (err) {

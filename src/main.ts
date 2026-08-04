@@ -5,6 +5,7 @@ import {
   SETTING_AUTO_CLEAN,
   SETTING_CLEAN_AGE_HOURS,
   SETTING_CLEAN_CONFIRM,
+  SETTING_CONFIRM,
   SETTING_ONLY_ON_CHAT,
 } from "./constants"
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
@@ -62,6 +63,13 @@ export async function load(name: string): Promise<void> {
   setupL10N(orca.state.locale)
 
   await orca.plugins.setSettingsSchema(name || PLUGIN_NAME, {
+    [SETTING_CONFIRM]: {
+      label: "替换有内容的对话前先确认",
+      description:
+        "开启时，若当前面板正在显示已有提问的 AI 对话，点击「新对话」会先弹出确认框，避免误触丢失上下文。",
+      type: "boolean",
+      defaultValue: true,
+    },
     [SETTING_ONLY_ON_CHAT]: {
       label: "仅当当前面板显示 AI 对话时显示按钮",
       description:

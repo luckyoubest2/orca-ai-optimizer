@@ -9,6 +9,7 @@ import {
   getRepr,
   notifyAIUnconfigured,
   openChat,
+  pluginSetting,
   resolvePanel,
 } from "./core"
 import {
@@ -64,7 +65,7 @@ function NewChatTool(props: {
   const { Button, Tooltip, Popup } = orca.components
   const [historyOpen, setHistoryOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
-  const anchorRef = React.useRef<any>(null)
+  const historyBtnRef = React.useRef<any>(null)
   const [anchorRect, setAnchorRect] = React.useState<{
     left: number
     top: number
@@ -110,20 +111,20 @@ function NewChatTool(props: {
       className: "orca-block-editor-sidetools-btn",
       variant: "plain",
       onClick: (e: { shiftKey?: boolean }) => {
-        void onMainClick(rootBlockId, panelId, !!e?.shiftKey)
+        void onNewChatClick(rootBlockId, panelId, !!e?.shiftKey)
       },
     },
     icon,
   )
 
-  const chevronButton = h(
+  const historyButton = h(
     Button,
     {
       className: "orca-block-editor-sidetools-btn orca-aio-history-btn",
       variant: "plain",
       onClick: (e: { stopPropagation?: () => void; shiftKey?: boolean }) => {
         e?.stopPropagation?.()
-        const el = anchorRef.current
+        const el = historyBtnRef.current
         if (el != null) {
           const r = el.getBoundingClientRect()
           setAnchorRect({
@@ -137,19 +138,7 @@ function NewChatTool(props: {
         setSearch("")
       },
     },
-    h("i", {
-      className: historyOpen ? "ti ti-chevron-up" : "ti ti-chevron-down",
-    }),
-  )
-
-  const group = h(
-    "span",
-    {
-      className: "orca-aio-sidetool-group",
-      style: { display: "inline-flex", alignItems: "center" },
-    },
-    mainButton,
-    chevronButton,
+    h("i", { className: "ti ti-history" }),
   )
 
   const historyPop = historyOpen
@@ -157,37 +146,40 @@ function NewChatTool(props: {
         rootBlockId,
         panelId,
         search,
+        rect: anchorRect,
         onSearch: setSearch,
         onNewChat: () => {
           setHistoryOpen(false)
-          void openNewChatInPanel(rootBlockId, panelId, false)
+          void onNewChatClick(rootBlockId, panelId, false)
         },
+        onClose: () => setHistoryOpen(false),
       })
     : null
 
-  const tooltip = h(
+  const mainTooltip = h(
     Tooltip,
     {
-      text: `${t("Open last conversation")}\n${t("Shift")}+${t("Open on the side")}\n${t("Chevron")}: ${t("History and new chat")}`,
+      text: `${t("New conversation")}（${t("Replace current")}）\nShift+${t("Open on the side")}`,
       placement: "horizontal",
     },
-    group,
+    mainButton,
   )
 
-  // 浮层与按钮组平级（Popup 通过 refElement 定位）
-  const anchor = h(
-    "span",
+  const historyTooltip = h(
+    Tooltip,
     {
-      ref: anchorRef,
-      style: { display: "inline-flex", alignItems: "center" },
+      text: t("Conversation history"),
+      placement: "horizontal",
     },
-    tooltip,
+    h("span", { ref: historyBtnRef, style: { display: "inline-flex" } }, historyButton),
   )
 
+  // 主按钮与历史按钮分开渲染（不并排）
   return h(
     "span",
-    { style: { position: "relative", display: "inline-flex" } },
-    anchor,
+    { style: { position: "relative", display: "inline-flex", flexDirection: "column" } },
+    mainTooltip,
+    historyTooltip,
     h(
       Popup,
       {
@@ -195,7 +187,7 @@ function NewChatTool(props: {
         visible: historyOpen,
         onClose: () => setHistoryOpen(false),
         placement: "vertical",
-        defaultPlacement: "right",
+        defaultPlacement: "left",
         alignment: "center",
         clickToClose: true,
         escapeToClose: true,
@@ -206,60 +198,24 @@ function NewChatTool(props: {
   )
 }
 
-/** 主按钮：打开上次对话（无则新建）；Shift 则在侧边打开 */
-async function onMainClick(
+/** 主按钮：快速新建对话并在当前面板替换旧窗口；Shift 则在侧边打开 */
+async function onNewChatClick(
   rootBlockId: number,
   panelId: string,
   openOnSide: boolean,
 ): Promise<void> {
-  const panel = resolvePanel(panelId)
-  if (panel == null) return
-
-  // 面板当前已在某个对话中：仅聚焦回当前对话（按文档语义，不切换）
+  // 当前面板已显示有内容的对话时先确认，避免误触丢失上下文
   const current = getAIChatBlock(rootBlockId)
   if (current != null) {
-    registerOpenedChat(rootBlockId, current.id, chatTitle(current))
-    if (openOnSide) openChat(current.id, panel.id, true)
-    else if (panel.view === "block" && panel.viewArgs?.blockId === current.id) {
-      // 已在展示，无需动作
-      return
-    } else {
-      openChat(current.id, panel.id, false)
-    }
-    return
-  }
-
-  // 查找本面板上次唤起的对话：校验块仍存在且非空
-  const history = getHistory(rootBlockId)
-  const liveEntry = await findLiveHistoryEntry(history)
-  if (liveEntry != null) {
-    registerOpenedChat(rootBlockId, liveEntry.blockId, liveEntry.title)
-    openChat(liveEntry.blockId, panel.id, openOnSide)
-    return
-  }
-
-  // 无历史或全部失效：新建
-  await openNewChatInPanel(rootBlockId, panel.id, openOnSide)
-}
-
-/** 从历史中找第一条仍存在且有内容的对话 */
-async function findLiveHistoryEntry(
-  history: ChatHistoryEntry[],
-): Promise<ChatHistoryEntry | null> {
-  for (const entry of history) {
-    try {
-      const block = await orca.invokeBackend("get-block", entry.blockId)
-      if (block == null) continue
-      orca.state.blocks[block.id] = block
-      const info = chatInfoFromBlock(block)
-      if (info != null && !info.isEmpty) {
-        return { ...entry, title: info.title || entry.title }
-      }
-    } catch {
-      continue
+    const hasContent = chatHasUserMessages(current)
+    if (hasContent && pluginSetting("confirmBeforeReplace") !== false) {
+      const confirmed = window.confirm(
+        `${t("New conversation")}：${t("Replace current")}？`,
+      )
+      if (!confirmed) return
     }
   }
-  return null
+  await openNewChatInPanel(rootBlockId, panelId, openOnSide)
 }
 
 /** 新建对话并在面板打开，同时登记历史 */
@@ -297,8 +253,15 @@ function HistoryPop(props: {
   rootBlockId: number
   panelId: string
   search: string
+  rect: {
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null
   onSearch: (v: string) => void
   onNewChat: () => void
+  onClose: () => void
 }): React.ReactElement {
   const h = React.createElement
   const [entries, setEntries] = React.useState<ChatHistoryEntry[] | null>(
@@ -369,6 +332,7 @@ function HistoryPop(props: {
                     entry.title,
                   )
                   openChat(entry.blockId, props.panelId, false)
+                  props.onClose()
                 },
               },
               h(
