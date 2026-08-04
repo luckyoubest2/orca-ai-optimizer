@@ -91,6 +91,8 @@ function ManagerDialog(): React.ReactElement {
   const [favFilter, setFavFilter] = React.useState<"all" | "fav" | "unfav">(
     "all",
   )
+  const [activeFrom, setActiveFrom] = React.useState("")
+  const [activeTo, setActiveTo] = React.useState("")
   const [sortBy, setSortBy] = React.useState<"modified" | "created" | "user">(
     "modified",
   )
@@ -149,6 +151,14 @@ function ManagerDialog(): React.ReactElement {
     const fav = favorites.has(c.blockId)
     if (favFilter === "fav" && !fav) return false
     if (favFilter === "unfav" && fav) return false
+    if (activeFrom) {
+      const from = new Date(`${activeFrom}T00:00:00`).getTime()
+      if (Number.isFinite(from) && c.modified < from) return false
+    }
+    if (activeTo) {
+      const to = new Date(`${activeTo}T23:59:59.999`).getTime()
+      if (Number.isFinite(to) && c.modified > to) return false
+    }
     if (!query) return true
     const rootTitle = rootBlockTitle(c.ctx?.[0]).toLowerCase()
     return (
@@ -390,6 +400,26 @@ function ManagerDialog(): React.ReactElement {
     h(
       "label",
       { className: "orca-aio-filter-label" },
+      t("Last active"),
+      h("input", {
+        type: "date",
+        className: "orca-aio-select orca-aio-date",
+        value: activeFrom,
+        onChange: (e: { target: { value: string } }) =>
+          setActiveFrom(e.target.value),
+      }),
+      "–",
+      h("input", {
+        type: "date",
+        className: "orca-aio-select orca-aio-date",
+        value: activeTo,
+        onChange: (e: { target: { value: string } }) =>
+          setActiveTo(e.target.value),
+      }),
+    ),
+    h(
+      "label",
+      { className: "orca-aio-filter-label" },
       t("Sort"),
       h(
         "select",
@@ -423,7 +453,11 @@ function ManagerDialog(): React.ReactElement {
           { className: "orca-aio-empty" },
           busy
             ? t("Loading…")
-            : filter || favFilter !== "all" || sourceFilter != null
+            : filter ||
+                favFilter !== "all" ||
+                sourceFilter != null ||
+                !!activeFrom ||
+                !!activeTo
               ? t("No conversations match")
               : t("No conversations yet"),
         )

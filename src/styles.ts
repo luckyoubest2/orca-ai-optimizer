@@ -71,6 +71,9 @@ const STYLES = `
   .orca-aio-number {
     width: 56px;
   }
+  .orca-aio-date {
+    width: auto;
+  }
   .orca-aio-batch-bar {
     display: flex;
     gap: 8px;
