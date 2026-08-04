@@ -1,6 +1,6 @@
 {
   "name": "orca-ai-optimizer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Orca Note 插件：手动拉起新的 AI 对话窗口，在当前位置替换掉旧的对话。",
   "type": "module",
