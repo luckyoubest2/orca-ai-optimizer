@@ -6,7 +6,6 @@ import {
   SETTING_CLEAN_AGE_HOURS,
   SETTING_CLEAN_CONFIRM,
   SETTING_CONFIRM,
-  SETTING_ONLY_ON_CHAT,
 } from "./constants"
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
 import { loadHistory, registerOpenedChat } from "./history"
@@ -67,13 +66,6 @@ export async function load(name: string): Promise<void> {
       label: "替换有内容的对话前先确认",
       description:
         "开启时，若当前面板正在显示已有提问的 AI 对话，点击「新对话」会先弹出确认框，避免误触丢失上下文。",
-      type: "boolean",
-      defaultValue: true,
-    },
-    [SETTING_ONLY_ON_CHAT]: {
-      label: "仅当当前面板显示 AI 对话时显示按钮",
-      description:
-        "开启后按钮只在 AI 对话窗口出现；关闭后所有面板都会显示，便于随时手动新开对话。",
       type: "boolean",
       defaultValue: true,
     },

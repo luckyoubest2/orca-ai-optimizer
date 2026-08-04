@@ -24,7 +24,7 @@ const React = window.React as typeof import("react")
 
 let registered = false
 
-/** 注册侧工具条「新对话」按钮（含历史下拉） */
+/** 注册侧工具条按钮（新对话 + 历史浮层），仅出现在 AI 对话面板 */
 export function registerSidetool(): void {
   if (registered) return
   if (orca.state.editorSidetools?.[SIDETOOL_ID] == null) {
@@ -42,68 +42,34 @@ export function unregisterSidetool(): void {
   registered = false
 }
 
+/** 按钮只渲染在“当前面板显示 AI 对话”时 */
 function renderSidetool(
   rootBlockId: number,
   panelId: string,
 ): React.ReactElement | null {
-  const pluginSettings = orca.state.plugins["orca-ai-optimizer"]?.settings
-  if (pluginSettings?.showOnlyOnAIChat !== false) {
-    const current = getAIChatBlock(rootBlockId)
-    if (current == null) return null
-  }
-  return React.createElement(NewChatTool, {
+  const current = getAIChatBlock(rootBlockId)
+  if (current == null) return null
+  return React.createElement(ChatSidetool, {
     rootBlockId,
     panelId,
+    currentBlockId: current.id,
   })
 }
 
-function NewChatTool(props: {
+function ChatSidetool(props: {
   rootBlockId: number
   panelId: string
+  currentBlockId: number
 }): React.ReactElement {
   const h = React.createElement
-  const { Button, Tooltip, Popup } = orca.components
+  const { Button, Tooltip } = orca.components
   const [historyOpen, setHistoryOpen] = React.useState(false)
-  const [search, setSearch] = React.useState("")
   const historyBtnRef = React.useRef<any>(null)
-  const [anchorRect, setAnchorRect] = React.useState<{
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
 
   const rootBlockId = props.rootBlockId
   const panelId = props.panelId
 
   const current = getAIChatBlock(rootBlockId)
-  const icon = h(
-    "span",
-    {
-      style: { position: "relative", display: "inline-flex" },
-    },
-    h("i", { className: "ti ti-message-chatbot" }),
-    h(
-      "span",
-      {
-        className: "orca-aio-newchat-badge",
-        style: {
-          position: "absolute",
-          right: "-4px",
-          top: "-5px",
-          fontSize: "9px",
-          fontWeight: 700,
-          lineHeight: 1,
-          color: "var(--orca-color-primary-5, #3b82f6)",
-          background: "var(--orca-color-canvas, #fff)",
-          borderRadius: "6px",
-          padding: "1px 2px",
-          border: "1px solid currentColor",
-        },
-      },
-      "+",
-    ),
-  )
 
   const mainButton = h(
     Button,
@@ -111,10 +77,14 @@ function NewChatTool(props: {
       className: "orca-block-editor-sidetools-btn",
       variant: "plain",
       onClick: (e: { shiftKey?: boolean }) => {
-        void onNewChatClick(rootBlockId, panelId, !!e?.shiftKey)
+        void onMainClick(rootBlockId, panelId, !!e?.shiftKey)
+      },
+      onContextMenu: (e: { preventDefault?: () => void }) => {
+        e?.preventDefault?.()
+        void onNewChatClick(rootBlockId, panelId, false)
       },
     },
-    icon,
+    h("i", { className: "ti ti-message-chatbot" }),
   )
 
   const historyButton = h(
@@ -122,44 +92,18 @@ function NewChatTool(props: {
     {
       className: "orca-block-editor-sidetools-btn orca-aio-history-btn",
       variant: "plain",
-      onClick: (e: { stopPropagation?: () => void; shiftKey?: boolean }) => {
+      onClick: (e: { stopPropagation?: () => void }) => {
         e?.stopPropagation?.()
-        const el = historyBtnRef.current
-        if (el != null) {
-          const r = el.getBoundingClientRect()
-          setAnchorRect({
-            left: r.left,
-            top: r.top,
-            width: r.width,
-            height: r.height,
-          })
-        }
         setHistoryOpen((v: boolean) => !v)
-        setSearch("")
       },
     },
     h("i", { className: "ti ti-history" }),
   )
 
-  const historyPop = historyOpen
-    ? h(HistoryPop, {
-        rootBlockId,
-        panelId,
-        search,
-        rect: anchorRect,
-        onSearch: setSearch,
-        onNewChat: () => {
-          setHistoryOpen(false)
-          void onNewChatClick(rootBlockId, panelId, false)
-        },
-        onClose: () => setHistoryOpen(false),
-      })
-    : null
-
   const mainTooltip = h(
     Tooltip,
     {
-      text: `${t("New conversation")}（${t("Replace current")}）\nShift+${t("Open on the side")}`,
+      text: `${t("Open last conversation")}\n${t("Right click")}: ${t("New conversation")}\nShift+${t("Open on the side")}`,
       placement: "horizontal",
     },
     mainButton,
@@ -171,55 +115,88 @@ function NewChatTool(props: {
       text: t("Conversation history"),
       placement: "horizontal",
     },
-    h("span", { ref: historyBtnRef, style: { display: "inline-flex" } }, historyButton),
+    h(
+      "span",
+      { ref: historyBtnRef, style: { display: "inline-flex" } },
+      historyButton,
+    ),
   )
 
-  // 主按钮与历史按钮分开渲染（不并排）
   return h(
     "span",
-    { style: { position: "relative", display: "inline-flex", flexDirection: "column" } },
+    {
+      style: {
+        position: "relative",
+        display: "inline-flex",
+        flexDirection: "column",
+      },
+    },
     mainTooltip,
     historyTooltip,
-    h(
-      Popup,
-      {
-        rect: anchorRect ?? undefined,
-        visible: historyOpen,
-        onClose: () => setHistoryOpen(false),
-        placement: "vertical",
-        defaultPlacement: "left",
-        alignment: "center",
-        clickToClose: true,
-        escapeToClose: true,
-        offset: 6,
-      },
-      historyPop,
-    ),
+    historyOpen
+      ? h(HistoryOverlay, {
+          rootBlockId,
+          panelId,
+          anchorEl: historyBtnRef,
+          onClose: () => setHistoryOpen(false),
+          onNewChat: () => {
+            setHistoryOpen(false)
+            void onNewChatClick(rootBlockId, panelId, false)
+          },
+        })
+      : null,
   )
 }
 
-/** 主按钮：快速新建对话并在当前面板替换旧窗口；Shift 则在侧边打开 */
-async function onNewChatClick(
+/** 主按钮：打开该面板上次唤起的对话；无历史/失效则新建 */
+async function onMainClick(
   rootBlockId: number,
   panelId: string,
   openOnSide: boolean,
 ): Promise<void> {
-  // 当前面板已显示有内容的对话时先确认，避免误触丢失上下文
+  const panel = resolvePanel(panelId)
+  if (panel == null) return
+
+  // 历史键 = 当前视图所属文档（aichat 用 ctx[0]，普通块用自身）
   const current = getAIChatBlock(rootBlockId)
-  if (current != null) {
-    const hasContent = chatHasUserMessages(current)
-    if (hasContent && pluginSetting("confirmBeforeReplace") !== false) {
-      const confirmed = window.confirm(
-        `${t("New conversation")}：${t("Replace current")}？`,
-      )
-      if (!confirmed) return
-    }
+  const ctx = current != null ? getRepr(current)?.ctx : undefined
+  const historyKey =
+    current != null && Array.isArray(ctx) && ctx.length > 0
+      ? Number(ctx[0])
+      : rootBlockId
+
+  const history = getHistory(historyKey)
+  const liveEntry = await findLiveHistoryEntry(history)
+  if (liveEntry != null) {
+    registerOpenedChat(historyKey, liveEntry.blockId, liveEntry.title)
+    openChat(liveEntry.blockId, panel.id, openOnSide)
+    return
   }
-  await openNewChatInPanel(rootBlockId, panelId, openOnSide)
+  await onNewChatClick(rootBlockId, panelId, openOnSide)
 }
 
-/** 新建对话并在面板打开，同时登记历史 */
-async function openNewChatInPanel(
+/** 从历史中找第一条仍存在且有内容的对话 */
+async function findLiveHistoryEntry(
+  history: ChatHistoryEntry[],
+): Promise<ChatHistoryEntry | null> {
+  for (const entry of history) {
+    try {
+      const block = await orca.invokeBackend("get-block", entry.blockId)
+      if (block == null) continue
+      orca.state.blocks[block.id] = block
+      const info = chatInfoFromBlock(block)
+      if (info != null && !info.isEmpty) {
+        return { ...entry, title: info.title || entry.title }
+      }
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
+/** 快速新建对话（当前面板替换）；右键/历史浮层入口触发 */
+async function onNewChatClick(
   rootBlockId: number,
   panelId: string,
   openOnSide: boolean,
@@ -228,8 +205,18 @@ async function openNewChatInPanel(
     notifyAIUnconfigured()
     return
   }
-  const panel = resolvePanel(panelId)
   const current = getAIChatBlock(rootBlockId)
+  if (
+    current != null &&
+    chatHasUserMessages(current) &&
+    pluginSetting("confirmBeforeReplace") !== false
+  ) {
+    const confirmed = window.confirm(
+      `${t("New conversation")}：${t("Replace current")}？`,
+    )
+    if (!confirmed) return
+  }
+  const panel = resolvePanel(panelId)
   const ctx =
     current != null && Array.isArray(getRepr(current)?.ctx)
       ? [...getRepr(current)!.ctx!]
@@ -241,39 +228,51 @@ async function openNewChatInPanel(
     })
     return
   }
-  registerOpenedChat(rootBlockId, newId)
+  const historyKey =
+    Array.isArray(ctx) && ctx.length > 0 ? Number(ctx[0]) : rootBlockId
+  registerOpenedChat(historyKey, newId)
   openChat(newId, panel?.id ?? panelId, openOnSide)
   orca.notify("success", t("New conversation opened"), {
     title: t("New conversation"),
   })
 }
 
-/** 历史下拉浮层 */
-function HistoryPop(props: {
+/** 历史浮层：自绘 fixed 定位，挂载到 body，避免 Popup 组件在侧工具条内失效 */
+function HistoryOverlay(props: {
   rootBlockId: number
   panelId: string
-  search: string
-  rect: {
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null
-  onSearch: (v: string) => void
-  onNewChat: () => void
+  anchorEl: React.RefObject<any>
   onClose: () => void
+  onNewChat: () => void
 }): React.ReactElement {
   const h = React.createElement
-  const [entries, setEntries] = React.useState<ChatHistoryEntry[] | null>(
-    null,
-  )
-  const [loading, setLoading] = React.useState(true)
+  const [entries, setEntries] = React.useState<ChatHistoryEntry[] | null>(null)
+  const [search, setSearch] = React.useState("")
+  const [pos, setPos] = React.useState({ left: 0, top: 0 })
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+
+  const current = getAIChatBlock(props.rootBlockId)
+  const ctx = current != null ? getRepr(current)?.ctx : undefined
+  const historyKey =
+    current != null && Array.isArray(ctx) && ctx.length > 0
+      ? Number(ctx[0])
+      : props.rootBlockId
+
+  React.useEffect(() => {
+    const el = props.anchorEl.current
+    if (el != null) {
+      const r = el.getBoundingClientRect()
+      const w = 300
+      let left = r.right + 6
+      if (left + w > window.innerWidth - 8) left = r.left - w - 6
+      setPos({ left, top: r.top })
+    }
+  }, [props.anchorEl])
 
   React.useEffect(() => {
     let cancelled = false
     void (async () => {
-      setLoading(true)
-      const history = getHistory(props.rootBlockId)
+      const history = getHistory(historyKey)
       const live: ChatHistoryEntry[] = []
       for (const entry of history) {
         try {
@@ -291,26 +290,44 @@ function HistoryPop(props: {
           continue
         }
       }
-      if (!cancelled) {
-        setEntries(live)
-        setLoading(false)
-      }
+      if (!cancelled) setEntries(live)
     })()
     return () => {
       cancelled = true
     }
-  }, [props.rootBlockId])
+  }, [historyKey])
 
-  const query = props.search.trim().toLowerCase()
+  React.useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (
+        wrapRef.current != null &&
+        !wrapRef.current.contains(e.target as Node) &&
+        props.anchorEl.current != null &&
+        !props.anchorEl.current.contains(e.target as Node)
+      ) {
+        props.onClose()
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") props.onClose()
+    }
+    document.addEventListener("mousedown", onDown, true)
+    document.addEventListener("keydown", onKey, true)
+    return () => {
+      document.removeEventListener("mousedown", onDown, true)
+      document.removeEventListener("keydown", onKey, true)
+    }
+  }, [props])
+
+  const query = search.trim().toLowerCase()
   const visible = (entries ?? []).filter(
-    (e: ChatHistoryEntry) =>
-      !query || (e.title ?? "").toLowerCase().includes(query),
+    (e) => !query || (e.title ?? "").toLowerCase().includes(query),
   )
 
   const list = h(
     "div",
     { className: "orca-aio-history-list" },
-    loading
+    entries == null
       ? h("div", { className: "orca-aio-history-empty" }, t("Loading…"))
       : visible.length === 0
         ? h(
@@ -318,16 +335,15 @@ function HistoryPop(props: {
             { className: "orca-aio-history-empty" },
             t("No conversations yet"),
           )
-        : visible.map((entry: ChatHistoryEntry) =>
+        : visible.map((entry) =>
             h(
               "div",
               {
                 key: entry.blockId,
                 className: "orca-aio-history-item",
-                onClick: (e: { stopPropagation?: () => void }) => {
-                  e?.stopPropagation?.()
+                onClick: () => {
                   registerOpenedChat(
-                    props.rootBlockId,
+                    historyKey,
                     entry.blockId,
                     entry.title,
                   )
@@ -351,20 +367,18 @@ function HistoryPop(props: {
 
   return h(
     "div",
-    { className: "orca-aio-history-pop" },
+    {
+      ref: wrapRef,
+      className: "orca-aio-history-pop",
+      style: { position: "fixed", left: pos.left, top: pos.top, zIndex: 99999 },
+    },
     h(
       "div",
       {
         className: "orca-aio-history-item",
-        onClick: (e: { stopPropagation?: () => void }) => {
-          e?.stopPropagation?.()
-          props.onNewChat()
-        },
+        onClick: () => props.onNewChat(),
       },
-      h("i", {
-        className: "ti ti-plus",
-        style: { marginRight: "4px" },
-      }),
+      h("i", { className: "ti ti-plus", style: { marginRight: "4px" } }),
       h(
         "span",
         { className: "orca-aio-history-item-title" },
@@ -374,9 +388,8 @@ function HistoryPop(props: {
     h("input", {
       className: "orca-aio-history-search",
       placeholder: t("Search conversations"),
-      value: props.search,
-      onChange: (e: { target: { value: string } }) =>
-        props.onSearch(e.target.value),
+      value: search,
+      onChange: (e: { target: { value: string } }) => setSearch(e.target.value),
     }),
     list,
   )

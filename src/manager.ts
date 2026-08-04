@@ -6,7 +6,6 @@ import {
 import {
   cleanupEmptyChats,
   deleteChat,
-  downloadText,
   exportChatMarkdown,
   listChats,
   preloadRootBlocks,
@@ -252,6 +251,7 @@ function buildRow(
       className: "orca-aio-row-main",
       title: t("Preview"),
       onClick: (e: { currentTarget?: HTMLElement }) => {
+        if (renamingId === info.blockId) return
         try {
           orca.utils.showBlockPreview(
             info.blockId,
@@ -309,13 +309,13 @@ function buildRow(
             {
               type: "button",
               className: "orca-aio-btn",
-              title: t("Export markdown"),
+              title: t("Copy markdown"),
               onClick: (e: { stopPropagation?: () => void }) => {
                 e?.stopPropagation?.()
-                void doExport(info)
+                void doCopy(info)
               },
             },
-            h("i", { className: "ti ti-download" }),
+            h("i", { className: "ti ti-copy" }),
           ),
           h(
             "button",
@@ -416,20 +416,6 @@ async function doDelete(
   if (done) await reload(true)
 }
 
-async function doExport(info: ChatInfo): Promise<void> {
-  const text = await exportChatMarkdown(info.blockId)
-  if (text == null) {
-    orca.notify("error", t("Failed to export conversation"), {
-      title: t("Export"),
-    })
-    return
-  }
-  const name = (info.title || `chat-${info.blockId}`)
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .slice(0, 60)
-  downloadText(`${name}.md`, text)
-}
-
 async function doClean(
   reload: (force?: boolean) => Promise<void>,
 ): Promise<void> {
@@ -455,6 +441,28 @@ async function doClean(
       { title: t("Clean empty chats") },
     )
     await reload(true)
+  }
+}
+
+/** 复制对话为 Markdown 到剪贴板 */
+async function doCopy(info: ChatInfo): Promise<void> {
+  const text = await exportChatMarkdown(info.blockId)
+  if (text == null) {
+    orca.notify("error", t("Failed to export conversation"), {
+      title: t("Copy"),
+    })
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    orca.notify("success", t("Copied to clipboard"), {
+      title: t("Copy"),
+    })
+  } catch (err) {
+    console.error("[orca-ai-optimizer] 复制失败", err)
+    orca.notify("error", t("Failed to export conversation"), {
+      title: t("Copy"),
+    })
   }
 }
 

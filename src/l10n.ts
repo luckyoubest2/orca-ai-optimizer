@@ -52,6 +52,10 @@ const zhCN: L10NMap = {
   "History and new chat": "历史与新建",
   "Close": "关闭",
   "Empty": "空",
+  "Copy markdown": "复制 Markdown",
+  "Copy": "复制",
+  "Copied to clipboard": "已复制到剪贴板",
+  "Right click": "右键",
 }
 
 const enUS: L10NMap = {
@@ -104,6 +108,10 @@ const enUS: L10NMap = {
   "History and new chat": "history & new chat",
   "Close": "Close",
   "Empty": "Empty",
+  "Copy markdown": "Copy Markdown",
+  "Copy": "Copy",
+  "Copied to clipboard": "Copied to clipboard",
+  "Right click": "Right-click",
 }
 
 let table: L10NMap = enUS

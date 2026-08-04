@@ -12,7 +12,6 @@ export const KEY_AI_MODEL = 22
 
 // 侧工具条（F0/F1）设置键
 export const SETTING_CONFIRM = "confirmBeforeReplace"
-export const SETTING_ONLY_ON_CHAT = "showOnlyOnAIChat"
 
 // 侧边栏对话管理（F2）设置键
 export const SETTING_AUTO_CLEAN = "autoCleanEmptyChats"

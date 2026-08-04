@@ -249,19 +249,6 @@ export async function exportChatMarkdown(
   }
 }
 
-/** 下载文本为文件（导出用） */
-export function downloadText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: "text/markdown;charset=utf-8" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 2000)
-}
-
 /** 清理候选判定：空对话 + 白名单保护 */
 export function isCleanupCandidate(
   info: ChatInfo,
