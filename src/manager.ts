@@ -18,12 +18,19 @@ import {
 const React = window.React as typeof import("react")
 
 const Valtio: any = window.Valtio
-const store = Valtio.proxy({ open: false })
+const store = Valtio.proxy({ open: false, filterSource: null as number | null })
 let root: any = null
 let holder: HTMLDivElement | null = null
 
 /** 打开对话管理窗口 */
 export function openManager(): void {
+  store.filterSource = null
+  store.open = true
+}
+
+/** 打开对话管理窗口并自动筛选指定来源文档 */
+export function openManagerWithSource(sourceRootId: number | null): void {
+  store.filterSource = sourceRootId
   store.open = true
 }
 
@@ -70,13 +77,26 @@ export function unmountManager(): void {
 
 function ManagerDialog(): React.ReactElement {
   const h = React.createElement
-  const { open } = Valtio.useSnapshot(store)
+  const snap = Valtio.useSnapshot(store)
+  const open = !!snap.open
   const visible = !!open
   const [chats, setChats] = React.useState<ChatInfo[]>([])
   const [filter, setFilter] = React.useState("")
+  const [sourceFilter, setSourceFilter] = React.useState<number | null>(
+    snap.filterSource ?? null,
+  )
+  const [minUserMsgs, setMinUserMsgs] = React.useState(0)
+  const [sortBy, setSortBy] = React.useState<"modified" | "created" | "user">(
+    "modified",
+  )
   const [busy, setBusy] = React.useState(false)
   const [renamingId, setRenamingId] = React.useState<number | null>(null)
   const busyRef = React.useRef(false)
+
+  // 外部（时钟按钮等）传入来源筛选时同步到本地状态
+  React.useEffect(() => {
+    setSourceFilter(snap.filterSource ?? null)
+  }, [snap.filterSource])
 
   const reload = React.useCallback(async (force = false) => {
     if (busyRef.current && !force) return
@@ -103,7 +123,14 @@ function ManagerDialog(): React.ReactElement {
   }, [])
 
   const query = filter.trim().toLowerCase()
-  const visibleChats = chats.filter((c) => {
+  const sources = Array.from(
+    new Set(chats.map((c) => c.ctx?.[0]).filter((id): id is number => id != null)),
+  )
+  let visibleChats = chats.filter((c) => {
+    if (sourceFilter != null && Number(c.ctx?.[0]) !== Number(sourceFilter)) {
+      return false
+    }
+    if (c.userMsgCount < minUserMsgs) return false
     if (!query) return true
     const rootTitle = rootBlockTitle(c.ctx?.[0]).toLowerCase()
     return (
@@ -111,6 +138,11 @@ function ManagerDialog(): React.ReactElement {
       rootTitle.includes(query) ||
       String(c.blockId).includes(query)
     )
+  })
+  visibleChats = [...visibleChats].sort((a, b) => {
+    if (sortBy === "created") return b.created - a.created
+    if (sortBy === "user") return b.userMsgCount - a.userMsgCount
+    return b.modified - a.modified
   })
 
   const emptyCount = chats.filter((c) => c.isEmpty).length
@@ -144,6 +176,65 @@ function ManagerDialog(): React.ReactElement {
       },
       h("i", { className: "ti ti-broom" }),
       t("Clean empty chats"),
+    ),
+  )
+
+  const filters = h(
+    "div",
+    { className: "orca-aio-manager-filters" },
+    h(
+      "label",
+      { className: "orca-aio-filter-label" },
+      t("Source"),
+      h(
+        "select",
+        {
+          className: "orca-aio-select",
+          value: sourceFilter == null ? "" : String(sourceFilter),
+          onChange: (e: { target: { value: string } }) => {
+            const v = e.target.value
+            setSourceFilter(v ? Number(v) : null)
+          },
+        },
+        h("option", { value: "" }, t("All sources")),
+        sources.map((id) =>
+          h(
+            "option",
+            { key: id, value: String(id) },
+            rootBlockTitle(id) || `#${id}`,
+          ),
+        ),
+      ),
+    ),
+    h(
+      "label",
+      { className: "orca-aio-filter-label" },
+      `${t("Messages")} ≥`,
+      h("input", {
+        type: "number",
+        min: 0,
+        className: "orca-aio-select orca-aio-number",
+        value: minUserMsgs,
+        onChange: (e: { target: { value: string } }) =>
+          setMinUserMsgs(Math.max(0, Number(e.target.value) || 0)),
+      }),
+    ),
+    h(
+      "label",
+      { className: "orca-aio-filter-label" },
+      t("Sort"),
+      h(
+        "select",
+        {
+          className: "orca-aio-select",
+          value: sortBy,
+          onChange: (e: { target: { value: any } }) =>
+            setSortBy(e.target.value),
+        },
+        h("option", { value: "modified" }, t("Last active")),
+        h("option", { value: "created" }, t("Created")),
+        h("option", { value: "user" }, t("Message count")),
+      ),
     ),
   )
 
@@ -199,6 +290,7 @@ function ManagerDialog(): React.ReactElement {
         ),
       ),
       toolbar,
+      filters,
       summary,
       list,
     ),

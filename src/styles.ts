@@ -42,6 +42,35 @@ const STYLES = `
     gap: 6px;
     align-items: center;
   }
+  .orca-aio-manager-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 2px 0;
+  }
+  .orca-aio-filter-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--orca-color-text-2);
+    font-size: var(--orca-fontsize-xs);
+    white-space: nowrap;
+  }
+  .orca-aio-select {
+    padding: 3px 6px;
+    border-radius: var(--orca-radius-sm);
+    border: 1px solid var(--orca-color-border);
+    background: var(--orca-color-bg-2);
+    color: var(--orca-color-text-1);
+    font-size: var(--orca-fontsize-xs);
+    font-family: var(--orca-fontfamily-ui);
+    outline: none;
+    max-width: 180px;
+  }
+  .orca-aio-number {
+    width: 56px;
+  }
   .orca-aio-search {
     flex: 1;
     min-width: 0;

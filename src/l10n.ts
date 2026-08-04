@@ -56,6 +56,13 @@ const zhCN: L10NMap = {
   "Copy": "复制",
   "Copied to clipboard": "已复制到剪贴板",
   "Right click": "右键",
+  "AI chat panel only": "仅 AI 对话面板",
+  "Filter conversations of this panel": "查看本面板来源的对话",
+  "All sources": "全部来源",
+  "Source": "来源",
+  "Sort": "排序",
+  "Created": "创建时间",
+  "Message count": "消息数",
 }
 
 const enUS: L10NMap = {
@@ -112,6 +119,13 @@ const enUS: L10NMap = {
   "Copy": "Copy",
   "Copied to clipboard": "Copied to clipboard",
   "Right click": "Right-click",
+  "AI chat panel only": "AI chat panels only",
+  "Filter conversations of this panel": "Filter conversations from this panel",
+  "All sources": "All sources",
+  "Source": "Source",
+  "Sort": "Sort",
+  "Created": "Created",
+  "Message count": "Message count",
 }
 
 let table: L10NMap = enUS

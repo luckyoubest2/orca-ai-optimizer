@@ -6,24 +6,31 @@ import {
   SETTING_CLEAN_AGE_HOURS,
   SETTING_CLEAN_CONFIRM,
   SETTING_CONFIRM,
+  SETTING_SHOW_HEADBAR_BUTTON,
 } from "./constants"
 import { chatTitle, getAIChatBlock, getRepr, setPluginName } from "./core"
 import { loadHistory, registerOpenedChat } from "./history"
-import { registerSidetool, unregisterSidetool } from "./sidetool"
+import {
+  newChatInCurrentPanel,
+  registerSidetool,
+  unregisterSidetool,
+} from "./sidetool"
 import {
   mountManager,
   unmountManager,
   toggleManager,
 } from "./manager"
 import {
-  registerHeadbarButton,
+  applyHeadbarButton,
   unregisterHeadbarButton,
 } from "./headbar"
 import { maybeAutoClean } from "./autoClean"
 import { injectStyles, removeStyles } from "./styles"
 
 let unsubscribeNav: (() => void) | null = null
+let unsubscribeSettings: (() => void) | null = null
 const CMD_OPEN_MANAGER = "orca-ai-optimizer.openChatManager"
+const CMD_NEW_CHAT = "orca-ai-optimizer.newChat"
 
 /** 订阅面板状态：任一面板打开 aichat 对话时登记到注册表 */
 function watchPanelNavigation(): void {
@@ -69,6 +76,13 @@ export async function load(name: string): Promise<void> {
       type: "boolean",
       defaultValue: true,
     },
+    [SETTING_SHOW_HEADBAR_BUTTON]: {
+      label: "在顶栏显示「AI 对话」按钮",
+      description:
+        "关闭后顶栏不显示快捷按钮，仍可通过命令面板执行「AI 对话管理」。",
+      type: "boolean",
+      defaultValue: true,
+    },
     [SETTING_AUTO_CLEAN]: {
       label: "自动清理空对话",
       description:
@@ -94,12 +108,21 @@ export async function load(name: string): Promise<void> {
   injectStyles()
   registerSidetool()
   mountManager()
-  registerHeadbarButton()
+  applyHeadbarButton()
+  unsubscribeSettings = window.Valtio.subscribe(
+    orca.state.plugins[name || PLUGIN_NAME],
+    () => applyHeadbarButton(),
+  )
 
   if (orca.state.commands[CMD_OPEN_MANAGER] == null) {
     orca.commands.registerCommand(CMD_OPEN_MANAGER, () => {
       toggleManager()
     }, "AI 对话管理")
+  }
+  if (orca.state.commands[CMD_NEW_CHAT] == null) {
+    orca.commands.registerCommand(CMD_NEW_CHAT, () => {
+      void newChatInCurrentPanel(undefined, false)
+    }, "新建 AI 对话（替换当前）")
   }
 
   await loadHistory()
@@ -118,11 +141,16 @@ export async function load(name: string): Promise<void> {
 export async function unload(): Promise<void> {
   unsubscribeNav?.()
   unsubscribeNav = null
+  unsubscribeSettings?.()
+  unsubscribeSettings = null
   unregisterSidetool()
   unregisterHeadbarButton()
   unmountManager()
   if (orca.state.commands[CMD_OPEN_MANAGER] != null) {
     orca.commands.unregisterCommand(CMD_OPEN_MANAGER)
+  }
+  if (orca.state.commands[CMD_NEW_CHAT] != null) {
+    orca.commands.unregisterCommand(CMD_NEW_CHAT)
   }
   removeStyles()
   console.log(`[orca-ai-optimizer] v${PLUGIN_VERSION} unloaded.`)
