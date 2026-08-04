@@ -151,6 +151,29 @@ export function openChat(blockId: DbId, panelId?: string, openOnSide = false): v
   } else {
     orca.nav.goTo("block", { blockId })
   }
+  // 打开对话后自动滚动到最后一条消息（内置不自动滚动）
+  scrollChatToBottom()
+}
+
+/**
+ * 等待 aichat 渲染完成后把消息容器滚动到底部。
+ * 内置行为只在“新消息/流式回复”时滚动，打开旧对话停在顶部；这里补上。
+ */
+export function scrollChatToBottom(): void {
+  const findContainer = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>(".orca-aichat-messages")
+  let tries = 0
+  const tick = (): void => {
+    const el = findContainer()
+    if (el != null) {
+      el.scrollTop = el.scrollHeight
+      return
+    }
+    if (++tries < 40) {
+      setTimeout(tick, 100)
+    }
+  }
+  setTimeout(tick, 150)
 }
 
 /** 新建一个空 AI 对话块，返回新块 ID；失败返回 null */
