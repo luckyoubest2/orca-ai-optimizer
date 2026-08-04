@@ -21,7 +21,6 @@ export const SETTING_CLEAN_CONFIRM = "confirmBeforeClean"
 
 // 持久化数据键（按仓库隔离）
 export const DATA_KEY_HISTORY = "panelChatHistory"
-export const DATA_KEY_LAST_CLEAN = "lastAutoCleanAt"
 
 // 侧工具条注册 ID（F0/F1 新对话 + 历史）
 export const SIDETOOL_ID = "orcaAiOptimizer.newChat"
