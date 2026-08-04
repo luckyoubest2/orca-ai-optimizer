@@ -395,24 +395,20 @@ function ManagerDialog(): React.ReactElement {
     h(
       "label",
       { className: "orca-aio-filter-label" },
-      t("Last active"),
+      `${t("Last active")} ${t("Over")}`,
       h(
-        "select",
+        "input",
         {
-          className: "orca-aio-select",
+          type: "number",
+          min: 0,
+          className: "orca-aio-select orca-aio-number",
+          placeholder: "0",
           value: inactiveDays,
-          onChange: (e: { target: { value: any } }) =>
+          onChange: (e: { target: { value: string } }) =>
             setInactiveDays(Number(e.target.value) || 0),
         },
-        h("option", { value: 0 }, t("Not limited")),
-        [1, 3, 7, 14, 30, 60, 90, 180, 365].map((n) =>
-          h(
-            "option",
-            { key: n, value: n },
-            `${t("Over")} ${n} ${t("days")}`,
-          ),
-        ),
       ),
+      t("days"),
     ),
     h(
       "label",
